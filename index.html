@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Comanda & Cardápio</title>
+  <style>
+    :root {
+      --bg-body: #f0f2f5;
+      --text-main: #1c1e21;
+      --card-bg: #ffffff;
+      --border-color: #e1e4e8;
+      --header-bg: #c0392b;
+      --tab-bg: #e4e6eb;
+      --tab-text: #606770;
+      --mesa-livre-bg: #ffffff;
+      --mesa-ocupada-bg: #fff8f8;
+      --mesa-ocupada-border: #c0392b;
+      --mesa-fechada-bg: #ebf5fb;
+      --mesa-fechada-border: #2980b9;
+      --mesa-fechada-text: #2980b9;
+    }
+
+    body.dark-mode {
+      --bg-body: #18191a;
+      --text-main: #e4e6eb;
+      --card-bg: #242526;
+      --border-color: #3a3b3c;
+      --header-bg: #801d13;
+      --tab-bg: #3a3b3c;
+      --tab-text: #b0b3b8;
+      --mesa-livre-bg: #242526;
+      --mesa-ocupada-bg: #3a1c1c;
+      --mesa-ocupada-border: #e74c3c;
+      --mesa-fechada-bg: #1c2d3d;
+      --mesa-fechada-border: #3498db;
+      --mesa-fechada-text: #5dade2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg-body); color: var(--text-main); padding-bottom: 70px; transition: background-color 0.2s; }
+    header { background-color: var(--header-bg); color: #fff; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+    header h1 { font-size: 1.1rem; font-weight: 700; }
+    .theme-toggle-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+
+    .container { padding: 12px; max-width: 600px; margin: 0 auto; }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 12px; background: var(--tab-bg); padding: 4px; border-radius: 8px; overflow-x: auto; }
+    .tab-btn { flex: 1; min-width: 80px; border: none; background: transparent; padding: 8px 4px; font-size: 0.8rem; font-weight: 600; border-radius: 6px; cursor: pointer; color: var(--tab-text); white-space: nowrap; }
+    .tab-btn.active { background: var(--card-bg); color: #c0392b; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    body.dark-mode .tab-btn.active { color: #ff7675; }
+
+    .grid-mesas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .card-mesa { background-color: var(--mesa-livre-bg); border-radius: 8px; padding: 12px 4px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer; border: 2px solid var(--border-color); user-select: none; }
+    .card-mesa.ocupada { border-color: var(--mesa-ocupada-border); background-color: var(--mesa-ocupada-bg); }
+    .card-mesa.fechada { border-color: var(--mesa-fechada-border); background-color: var(--mesa-fechada-bg); }
+    .card-mesa strong { display: block; font-size: 0.9rem; }
+    .card-mesa span { display: block; font-size: 0.72rem; color: var(--tab-text); margin-top: 2px; font-weight: 600; }
+    .card-mesa.ocupada span { color: #c0392b; }
+    body.dark-mode .card-mesa.ocupada span { color: #ff7675; }
+    .card-mesa.fechada span { color: var(--mesa-fechada-text); }
+
+    .filtros-categoria { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px; }
+    .btn-cat { background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+    .btn-cat.active { background: #c0392b; color: #fff; border-color: #c0392b; }
+
+    .cardapio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .item-cardapio { background: var(--card-bg); padding: 10px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between; min-height: 65px; }
+    .item-cardapio strong { font-size: 0.82rem; margin-bottom: 4px; line-height: 1.2; }
+    .item-cardapio span { color: #27ae60; font-weight: 700; font-size: 0.8rem; }
+
+    .card-painel { background: var(--card-bg); padding: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 12px; border: 1px solid var(--border-color); }
+    .lista-pedidos { list-style: none; margin-top: 8px; border-top: 1px dashed var(--border-color); padding-top: 8px; }
+    .lista-pedidos li { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; font-size: 0.85rem; }
+    .badge-status { font-size: 0.65rem; padding: 2px 5px; border-radius: 6px; font-weight: 700; text-transform: uppercase; }
+    .badge-pendente { background: #fff3cd; color: #856404; }
+    .badge-impresso { background: #d4edda; color: #155724; }
+
+    .btn-acao { width: 100%; border: none; padding: 12px; border-radius: 8px; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+    .btn-novos { background-color: #2980b9; color: #fff; }
+    .btn-fechar { background-color: #d35400; color: #fff; }
+    .btn-pagar { background-color: #27ae60; color: #fff; }
+    .btn-voltar { background: none; border: none; color: #c0392b; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-bottom: 10px; }
+    body.dark-mode .btn-voltar { color: #ff7675; }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 200; justify-content: center; align-items: flex-end; }
+    .modal-content { background: var(--card-bg); color: var(--text-main); width: 100%; max-width: 500px; border-radius: 16px 16px 0 0; padding: 16px; max-height: 88vh; overflow-y: auto; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 4px; }
+    .form-control { width: 100%; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); font-size: 0.88rem; }
+
+    #area-cupom { display: none; }
+    @media print {
+      body * { visibility: hidden; }
+      #area-cupom, #area-cupom * { visibility: visible; }
+      #area-cupom { display: block !important; position: absolute; left: 0; top: 0; width: 100%; max-width: 58mm; font-size: 11px; color: #000; font-family: monospace; line-height: 1.2; }
+      .nao-imprimir { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="nao-imprimir">
+    <h1>Comanda & Cardápio Digital</h1>
+    <button class="theme-toggle-btn" onclick="alternarTema()" id="btn-tema">🌙 Escuro</button>
+  </header>
+
+  <div class="container nao-imprimir">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="trocarAba('todas')">Mesas (50)</button>
+      <button class="tab-btn" onclick="trocarAba('abertas')">Abertas</button>
+      <button class="tab-btn" onclick="trocarAba('aguardando')">Aguardando Pgto</button>
+      <button class="tab-btn" onclick="trocarAba('historico')">Histórico</button>
+      <button class="tab-btn" onclick="solicitarAcessoAdmin()">⚙️ Cardápio</button>
+    </div>
+
+    <!-- TELA MESAS -->
+    <div id="view-mesas">
+      <div class="grid-mesas" id="grid-mesas"></div>
+    </div>
+
+    <!-- TELA HISTÓRICO -->
+    <div id="view-historico" style="display: none;">
+      <div id="lista-historico"></div>
+      <button class="btn-acao" style="background:#e74c3c; color:#fff; margin-top:10px;" onclick="limparHistorico()">Limpar Histórico</button>
+    </div>
+
+    <!-- TELA COMANDA -->
+    <div id="view-comanda" style="display: none;">
+      <button class="btn-voltar" onclick="voltarParaMesas()">← Voltar às Mesas</button>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h3 id="comanda-titulo-mesa">Mesa --</h3>
+        <span id="comanda-badge-status" class="badge-status"></span>
+      </div>
+
+      <!-- ITENS DA MESA PRIMEIRO -->
+      <div class="card-painel">
+        <h4>Itens na Mesa</h4>
+        <ul class="lista-pedidos" id="lista-pedidos-mesa"></ul>
+        <div style="text-align: right; margin-top: 8px; font-size: 0.85rem; color: var(--tab-text);" id="subtotal-mesa">Subtotal: R$ 0,00</div>
+        <div style="text-align: right; font-size: 0.85rem; color: var(--tab-text);" id="taxa-mesa">10% Garçom: R$ 0,00</div>
+        <div style="text-align: right; font-weight: 700; font-size: 1.15rem; margin-top: 4px; color:#27ae60;" id="total-mesa">Total: R$ 0,00</div>
+      </div>
+
+      <!-- BOTÃO PARA ABRIR OPÇÃO DE ADICIONAR ITENS -->
+      <button class="btn-acao" style="background:#34495e; color:#fff;" id="btn-toggle-cardapio" onclick="toggleSecaoCardapio()">➕ Adicionar Produtos à Mesa</button>
+
+      <!-- SEÇÃO DO CARDÁPIO (EXPANSÍVEL) -->
+      <div class="card-painel" id="secao-adicionar-cardapio" style="display: none;">
+        <h4 style="margin-bottom: 8px;">Cardápio</h4>
+        <div class="filtros-categoria" id="botoes-categorias-comanda"></div>
+        <div class="cardapio-grid" id="grid-itens-comanda"></div>
+      </div>
+
+      <!-- AÇÕES DA COMANDA -->
+      <div id="acoes-comanda">
+        <button class="btn-acao btn-novos" onclick="imprimirNovosItens()">🖨️ Enviar / Imprimir Apenas Novos Itens</button>
+        <button class="btn-acao btn-fechar" id="btn-fechar-mesa" onclick="fecharMesaEImprimir()">📄 Imprimir Conta & Fechar Mesa (Aguardar Pgto)</button>
+        <button class="btn-acao btn-pagar" id="btn-confirmar-pagamento" style="display: none;" onclick="confirmarPagamentoMesa()">💰 Confirmar Pagamento & Liberar Mesa</button>
+      </div>
+    </div>
+
+    <!-- TELA ADMIN / GERENCIAMENTO -->
+    <div id="view-admin" style="display: none;">
+      <button class="btn-voltar" onclick="trocarAba('todas')">← Voltar às Mesas</button>
+      <div class="card-painel">
+        <h4 style="margin-bottom: 10px;">Adicionar / Editar Produto</h4>
+        <input type="hidden" id="admin-item-id">
+        <div class="form-group">
+          <label>Nome do Produto</label>
+          <input type="text" class="form-control" id="admin-nome">
+        </div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <input type="text" class="form-control" id="admin-categoria">
+        </div>
+        <div class="form-group">
+          <label>Preço Base / Único (R$)</label>
+          <input type="number" step="0.01" class="form-control" id="admin-preco">
+        </div>
+        <div class="form-group">
+          <label>Preço P (Se aplicável)</label>
+          <input type="number" step="0.01" class="form-control" id="admin-preco-p">
+        </div>
+        <div class="form-group">
+          <label>Preço G / P2 (Se aplicável)</label>
+          <input type="number" step="0.01" class="form-control" id="admin-preco-g">
+        </div>
+        <div class="form-group">
+          <label>Preço GG (Se aplicável)</label>
+          <input type="number" step="0.01" class="form-control" id="admin-preco-gg">
+        </div>
+        <div class="form-group">
+          <label>Tipo de Item</label>
+          <select class="form-control" id="admin-tipo">
+            <option value="simples">Padrão / Simples</option>
+            <option value="pizza">Pizza (Com tamanhos e múltiplos sabores)</option>
+            <option value="refeicao">Refeição (P/1, P/2 e Escolha de Arroz/Acompanhamento)</option>
+            <option value="suco">Suco (Escolha de Sabor e Formato)</option>
+          </select>
+        </div>
+        <button class="btn-acao" style="background:#27ae60; color:#fff;" onclick="salvarProdutoAdmin()">Salvar Produto</button>
+        <button class="btn-acao" style="background:#7f8c8d; color:#fff;" onclick="limparFormAdmin()">Limpar Formulário</button>
+      </div>
+
+      <div class="card-painel">
+        <h4>Produtos Cadastrados</h4>
+        <div id="lista-admin-cardapio" style="margin-top: 10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL PIZZA (COM CAMPO DE OBSERVAÇÃO) -->
+  <div class="modal-overlay" id="modal-pizza">
+    <div class="modal-content">
+      <h3 style="margin-bottom: 6px;">Montar Pizza</h3>
+      <div class="form-group">
+        <label>Tamanho da Pizza:</label>
+        <select class="form-control" id="pizza-tamanho" onchange="recalcularValorPizza()">
+          <option value="p">P (4 Fatias / 25cm)</option>
+          <option value="g" selected>G (8 Fatias / 35cm)</option>
+          <option value="gg">GG (16 Fatias / 45cm)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tipo de Massa:</label>
+        <select class="form-control" id="pizza-massa">
+          <option value="Massa Fina">Fina</option>
+          <option value="Massa Média" selected>Média</option>
+          <option value="Massa Grossa">Grossa</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Quantidade de Sabores:</label>
+        <select class="form-control" id="pizza-qtd-sabores" onchange="renderizarSeletoresSabores()">
+          <option value="1">1 Sabor (Inteira)</option>
+          <option value="2">2 Sabores (1/2 cada)</option>
+          <option value="3">3 Sabores (1/3 cada)</option>
+          <option value="4">4 Sabores (1/4 cada)</option>
+        </select>
+      </div>
+      <div id="container-selecao-sabores"></div>
+      <div class="form-group">
+        <label>Borda Recheada (Opcional):</label>
+        <select class="form-control" id="pizza-borda" onchange="recalcularValorPizza()">
+          <option value="sem">Sem Borda</option>
+          <option value="cheddar">Cheddar</option>
+          <option value="catupiry">Catupiry</option>
+          <option value="chocolate">Chocolate</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observação / Retirar Itens:</label>
+        <input type="text" class="form-control" id="pizza-obs" placeholder="Ex: Sem cebola, caprichar no orégano">
+      </div>
+      <div style="margin: 12px 0; font-weight: 700; font-size: 1.05rem; text-align: right; color:#27ae60;" id="pizza-valor-calculado">Total: R$ 0,00</div>
+      <button class="btn-acao" style="background:#27ae60; color:#fff;" onclick="confirmarPizza()">Lançar na Mesa</button>
+      <button class="btn-acao" style="background:#95a5a6; color:#fff;" onclick="fecharModalPizza()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL REFEIÇÃO / FRUTOS DO MAR -->
+  <div class="modal-overlay" id="modal-refeicao">
+    <div class="modal-content">
+      <h3 id="modal-refeicao-titulo" style="margin-bottom: 8px;">Opções do Prato</h3>
+      <div class="form-group">
+        <label>Tamanho / Porção:</label>
+        <select class="form-control" id="refeicao-tamanho" onchange="atualizarPrecoRefeicaoModal()">
+          <option value="p1">P/1 (Individual)</option>
+          <option value="p2">P/2 (Para 2 Pessoas)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Opção de Arroz / Base:</label>
+        <select class="form-control" id="refeicao-arroz">
+          <option value="Arroz Branco">Arroz Branco</option>
+          <option value="Baião">Baião de Dois</option>
+          <option value="Arroz à Grega">Arroz à Grega</option>
+          <option value="Espaguete">Espaguete</option>
+          <option value="Sem Arroz">Sem Arroz</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observação (ponto da carne, sem cebola, etc.):</label>
+        <input type="text" class="form-control" id="refeicao-obs">
+      </div>
+      <div style="margin: 12px 0; font-weight: 700; font-size: 1.05rem; text-align: right; color:#27ae60;" id="refeicao-valor-calculado">Total: R$ 0,00</div>
+      <button class="btn-acao" style="background:#27ae60; color:#fff;" onclick="confirmarRefeicao()">Lançar na Mesa</button>
+      <button class="btn-acao" style="background:#95a5a6; color:#fff;" onclick="fecharModalRefeicao()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL SUCOS -->
+  <div class="modal-overlay" id="modal-suco">
+    <div class="modal-content">
+      <h3 style="margin-bottom: 8px;">Escolha o Suco</h3>
+      <div class="form-group">
+        <label>Sabor da Fruta:</label>
+        <select class="form-control" id="suco-fruta">
+          <option value="Goiaba">Goiaba</option>
+          <option value="Acerola">Acerola</option>
+          <option value="Cajá">Cajá</option>
+          <option value="Maracujá">Maracujá</option>
+          <option value="Manga">Manga</option>
+          <option value="Bacuri">Bacuri</option>
+          <option value="Graviola">Graviola</option>
+          <option value="Cupuaçu">Cupuaçu</option>
+          <option value="Abacaxi">Abacaxi</option>
+          <option value="Caju">Caju</option>
+          <option value="Laranja">Laranja</option>
+          <option value="Limão">Limão</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Tipo / Formato:</label>
+        <select class="form-control" id="suco-tipo">
+          <option value="Copo Sem Leite|6.00">Copo Sem Leite - R$ 6,00</option>
+          <option value="Copo Com Leite|7.00">Copo Com Leite - R$ 7,00</option>
+          <option value="Laranja/Limão Copo|7.00">Laranja ou Limão Copo - R$ 7,00</option>
+          <option value="Jarra Sem Leite|15.00">Jarra Sem Leite - R$ 15,00</option>
+          <option value="Jarra Com Leite|17.00">Jarra Com Leite - R$ 17,00</option>
+          <option value="Jarra Laranja/Limão|17.00">Jarra Laranja ou Limão - R$ 17,00</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Observação (Ex: Sem açúcar, com gelo):</label>
+        <input type="text" class="form-control" id="suco-obs" placeholder="Ex: Sem açúcar">
+      </div>
+      <button class="btn-acao" style="background:#27ae60; color:#fff;" onclick="confirmarSuco()">Lançar na Mesa</button>
+      <button class="btn-acao" style="background:#95a5a6; color:#fff;" onclick="fecharModalSuco()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL ITENS PADRÃO (OBSERVAÇÃO GERAL) -->
+  <div class="modal-overlay" id="modal-simples">
+    <div class="modal-content">
+      <h3 id="modal-simples-titulo" style="margin-bottom: 8px;">Produto</h3>
+      <div class="form-group">
+        <label>Observações / Retirar Ingredientes:</label>
+        <input type="text" class="form-control" id="simples-obs" placeholder="Ex: Bem passado, sem cebola, limão e gelo">
+      </div>
+      <div style="margin: 12px 0; font-weight: 700; font-size: 1.05rem; text-align: right; color:#27ae60;" id="simples-valor-calculado">Total: R$ 0,00</div>
+      <button class="btn-acao" style="background:#27ae60; color:#fff;" onclick="confirmarItemSimples()">Lançar na Mesa</button>
+      <button class="btn-acao" style="background:#95a5a6; color:#fff;" onclick="fecharModalSimples()">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="area-cupom"></div>
+
+  <script>
+    const TOTAL_MESAS = 50;
+    const STORAGE_MESAS = 'sis_mesas_oficial';
+    const STORAGE_HIST = 'sis_hist_oficial';
+    const STORAGE_CARDAPIO = 'sis_cardapio_oficial_v2';
+    const STORAGE_SENHA = 'sis_senha_admin_oficial';
+    const STORAGE_THEME = 'sis_tema_escuro';
+
+    const cardapioCompleto = [
+      // PIZZAS
+      { id: 101, nome: "Mussarela", categoria: "Pizzas", precos: { p: 30.00, g: 40.00, gg: 55.00 }, tipo: "pizza" },
+      { id: 102, nome: "Calabresa", categoria: "Pizzas", precos: { p: 30.00, g: 40.00, gg: 55.00 }, tipo: "pizza" },
+      { id: 103, nome: "Frango", categoria: "Pizzas", precos: { p: 32.00, g: 43.00, gg: 56.00 }, tipo: "pizza" },
+      { id: 104, nome: "Frango do Chefe", categoria: "Pizzas", precos: { p: 32.00, g: 42.00, gg: 56.00 }, tipo: "pizza" },
+      { id: 105, nome: "Marguerita", categoria: "Pizzas", precos: { p: 32.00, g: 42.00, gg: 56.00 }, tipo: "pizza" },
+      { id: 106, nome: "Siciliana", categoria: "Pizzas", precos: { p: 32.00, g: 42.00, gg: 56.00 }, tipo: "pizza" },
+      { id: 107, nome: "Mista", categoria: "Pizzas", precos: { p: 32.00, g: 42.00, gg: 56.00 }, tipo: "pizza" },
+      { id: 108, nome: "Quatro Queijos", categoria: "Pizzas", precos: { p: 35.00, g: 50.00, gg: 65.00 }, tipo: "pizza" },
+      { id: 109, nome: "Mexicana", categoria: "Pizzas", precos: { p: 34.00, g: 50.00, gg: 65.00 }, tipo: "pizza" },
+      { id: 110, nome: "Bacon", categoria: "Pizzas", precos: { p: 34.00, g: 55.00, gg: 68.00 }, tipo: "pizza" },
+      { id: 111, nome: "Portuguesa", categoria: "Pizzas", precos: { p: 36.00, g: 52.00, gg: 66.00 }, tipo: "pizza" },
+      { id: 112, nome: "Calabresa com Catupiry", categoria: "Pizzas", precos: { p: 36.00, g: 52.00, gg: 66.00 }, tipo: "pizza" },
+      { id: 113, nome: "Carbonara", categoria: "Pizzas", precos: { p: 36.00, g: 52.00, gg: 66.00 }, tipo: "pizza" },
+      { id: 114, nome: "Frango com Catupiry", categoria: "Pizzas", precos: { p: 36.00, g: 52.00, gg: 66.00 }, tipo: "pizza" },
+      { id: 115, nome: "Cinco Queijos", categoria: "Pizzas", precos: { p: 35.00, g: 55.00, gg: 70.00 }, tipo: "pizza" },
+      { id: 116, nome: "Preciosa (Moda da Casa)", categoria: "Pizzas", precos: { p: 38.00, g: 60.00, gg: 70.00 }, tipo: "pizza" },
+      { id: 117, nome: "Balacubana", categoria: "Pizzas", precos: { p: 38.00, g: 58.00, gg: 70.00 }, tipo: "pizza" },
+      { id: 118, nome: "Lombo Canadense", categoria: "Pizzas", precos: { p: 38.00, g: 58.00, gg: 70.00 }, tipo: "pizza" },
+      { id: 119, nome: "Carne de Sol com Coalho/Catupiry", categoria: "Pizzas", precos: { p: 38.00, g: 68.00, gg: 80.00 }, tipo: "pizza" },
+      { id: 120, nome: "Camarão", categoria: "Pizzas", precos: { p: 35.00, g: 65.00, gg: 80.00 }, tipo: "pizza" },
+      { id: 121, nome: "Peperone", categoria: "Pizzas", precos: { p: 38.00, g: 68.00, gg: 80.00 }, tipo: "pizza" },
+      { id: 122, nome: "Filé com Cheddar", categoria: "Pizzas", precos: { p: 37.00, g: 68.00, gg: 80.00 }, tipo: "pizza" },
+      { id: 123, nome: "Chocolate", categoria: "Pizzas", precos: { p: 35.00, g: 50.00, gg: 70.00 }, tipo: "pizza" },
+      { id: 124, nome: "Doce Parnaíba", categoria: "Pizzas", precos: { p: 35.00, g: 55.00, gg: 65.00 }, tipo: "pizza" },
+      { id: 125, nome: "Nutella", categoria: "Pizzas", precos: { p: 40.00, g: 65.00, gg: 80.00 }, tipo: "pizza" },
+
+      // PETISCOS
+      { id: 201, nome: "Caldo de Carne", categoria: "Petiscos", preco: 12.00, tipo: "simples" },
+      { id: 202, nome: "Espetinho de Camarão", categoria: "Petiscos", preco: 22.00, tipo: "simples" },
+      { id: 203, nome: "Batata Frita 300g", categoria: "Petiscos", preco: 16.00, tipo: "simples" },
+      { id: 204, nome: "Macaxeira Frita 300g", categoria: "Petiscos", preco: 18.00, tipo: "simples" },
+      { id: 205, nome: "Filé com Fritas 300g", categoria: "Petiscos", preco: 50.00, tipo: "simples" },
+      { id: 206, nome: "Isca de Frango 300g", categoria: "Petiscos", preco: 35.00, tipo: "simples" },
+      { id: 207, nome: "Isca de Peixe 300g", categoria: "Petiscos", preco: 35.00, tipo: "simples" },
+      { id: 208, nome: "Escondidinho Camarão/Carne Sol", categoria: "Petiscos", preco: 35.00, tipo: "simples" },
+      { id: 209, nome: "Camarão Empanado 250g", categoria: "Petiscos", preco: 45.00, tipo: "simples" },
+      { id: 210, nome: "Camarão ao Alho e Óleo 300g", categoria: "Petiscos", preco: 45.00, tipo: "simples" },
+      { id: 211, nome: "Patinha de Caranguejo (12 un)", categoria: "Petiscos", preco: 40.00, tipo: "simples" },
+      { id: 212, nome: "Carne de Sol c/ Macaxeira 400g", categoria: "Petiscos", preco: 45.00, tipo: "simples" },
+      { id: 213, nome: "Frango a Passarinha 500g", categoria: "Petiscos", preco: 35.00, tipo: "simples" },
+      { id: 214, nome: "Calabresa com Fritas 300g", categoria: "Petiscos", preco: 35.00, tipo: "simples" },
+      { id: 215, nome: "Picanha Grelhada 300g", categoria: "Petiscos", preco: 50.00, tipo: "simples" },
+      { id: 216, nome: "Ovo de Codorna", categoria: "Petiscos", preco: 15.00, tipo: "simples" },
+      { id: 217, nome: "Barca de Petisco", categoria: "Petiscos", preco: 70.00, tipo: "simples" },
+
+      // PORÇÕES
+      { id: 301, nome: "Baião com Queijo", categoria: "Porções", preco: 15.00, tipo: "simples" },
+      { id: 302, nome: "Arroz Branco", categoria: "Porções", preco: 5.00, tipo: "simples" },
+      { id: 303, nome: "Arroz à Grega", categoria: "Porções", preco: 10.00, tipo: "simples" },
+      { id: 304, nome: "Maria Isabel", categoria: "Porções", preco: 15.00, tipo: "simples" },
+      { id: 305, nome: "Baião", categoria: "Porções", preco: 10.00, tipo: "simples" },
+      { id: 306, nome: "Feijão Tropeiro", categoria: "Porções", preco: 15.00, tipo: "simples" },
+      { id: 307, nome: "Purê de Batata", categoria: "Porções", preco: 12.00, tipo: "simples" },
+      { id: 308, nome: "Farofa", categoria: "Porções", preco: 3.00, tipo: "simples" },
+      { id: 309, nome: "Feijão", categoria: "Porções", preco: 10.00, tipo: "simples" },
+
+      // REFEIÇÕES
+      { id: 401, nome: "Frango Grelhado", categoria: "Refeições", precos: { p1: 45.00, p2: 65.00 }, tipo: "refeicao" },
+      { id: 402, nome: "Filé Mignon", categoria: "Refeições", precos: { p1: 55.00, p2: 75.00 }, tipo: "refeicao" },
+      { id: 403, nome: "Filé à Cavala", categoria: "Refeições", precos: { p1: 55.00, p2: 85.00 }, tipo: "refeicao" },
+      { id: 404, nome: "Filé à Medalhão", categoria: "Refeições", precos: { p1: 55.00, p2: 75.00 }, tipo: "refeicao" },
+      { id: 405, nome: "Filé à Parmegiana", categoria: "Refeições", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 406, nome: "Filé ao Molho Madeira", categoria: "Refeições", precos: { p1: 55.00, p2: 75.00 }, tipo: "refeicao" },
+      { id: 407, nome: "Carne de Sol c/ Queijo Coalho", categoria: "Refeições", precos: { p1: 55.00, p2: 75.00 }, tipo: "refeicao" },
+      { id: 408, nome: "Picanha", categoria: "Refeições", precos: { p1: 85.00, p2: 155.00 }, tipo: "refeicao" },
+
+      // FRUTOS DO MAR
+      { id: 501, nome: "Pescada Amarela (Peixada)", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 502, nome: "Peixe ao Molho de Camarão", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 503, nome: "Peixe Escabeche", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 504, nome: "Camarão à Baiana", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 505, nome: "Camarão ao Catupiry", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 506, nome: "Camarão à Delícia", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 85.00 }, tipo: "refeicao" },
+      { id: 507, nome: "Peixe Frito", categoria: "Frutos do Mar", precos: { p1: 60.00, p2: 80.00 }, tipo: "refeicao" },
+      { id: 508, nome: "Camarão Tropical", categoria: "Frutos do Mar", precos: { p1: 55.00, p2: 55.00 }, tipo: "refeicao" },
+
+      // SALADAS
+      { id: 601, nome: "Salada Neturno", categoria: "Saladas", preco: 40.00, tipo: "simples" },
+      { id: 602, nome: "Salada de Frango", categoria: "Saladas", preco: 35.00, tipo: "simples" },
+
+      // SUCOS
+      { id: 700, nome: "Suco Natural", categoria: "Sucos", preco: 6.00, tipo: "suco" },
+
+      // BEBIDAS & REFRIGERANTES
+      { id: 801, nome: "Fys Limão Zero / Fys Guaraná Zero", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 802, nome: "Fys Limão / Guaraná / Laranja", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 803, nome: "Guaraná Antarctica Lata Zero", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 804, nome: "Coca Cola Lata Zero", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 805, nome: "Guaraná Antarctica Lata", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 806, nome: "Fanta Lata", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 807, nome: "Coca Cola Lata", categoria: "Bebidas", preco: 7.00, tipo: "simples" },
+      { id: 808, nome: "Guaraná Antarctica 600ml", categoria: "Bebidas", preco: 8.00, tipo: "simples" },
+      { id: 809, nome: "Coca Cola 600ml", categoria: "Bebidas", preco: 8.00, tipo: "simples" },
+      { id: 810, nome: "Guaraná Antarctica 1 Litro", categoria: "Bebidas", preco: 10.00, tipo: "simples" },
+      { id: 811, nome: "Coca Cola 1 Litro", categoria: "Bebidas", preco: 10.00, tipo: "simples" },
+      { id: 812, nome: "Coca Cola 1,5 Litros", categoria: "Bebidas", preco: 11.00, tipo: "simples" },
+      { id: 813, nome: "Guaraná Antarctica 1,5 Litros", categoria: "Bebidas", preco: 11.00, tipo: "simples" },
+      { id: 814, nome: "Guaraná Antarctica 2 Litros", categoria: "Bebidas", preco: 14.00, tipo: "simples" },
+      { id: 815, nome: "Coca Cola 2 Litros", categoria: "Bebidas", preco: 14.00, tipo: "simples" },
+      { id: 816, nome: "Cajuína 500ml", categoria: "Bebidas", preco: 12.00, tipo: "simples" },
+      { id: 817, nome: "Red Bull", categoria: "Bebidas", preco: 12.00, tipo: "simples" },
+      { id: 818, nome: "Monster", categoria: "Bebidas", preco: 15.00, tipo: "simples" },
+
+      // ÁGUAS
+      { id: 851, nome: "Água Tônica", categoria: "Águas", preco: 7.00, tipo: "simples" },
+      { id: 852, nome: "Água Schin Sem Gás", categoria: "Águas", preco: 3.00, tipo: "simples" },
+      { id: 853, nome: "Água Schin Com Gás", categoria: "Águas", preco: 3.50, tipo: "simples" },
+      { id: 854, nome: "Água Sem Gás", categoria: "Águas", preco: 3.00, tipo: "simples" },
+      { id: 855, nome: "Água Com Gás", categoria: "Águas", preco: 3.50, tipo: "simples" },
+      { id: 856, nome: "Aquarius Fresh / H2O", categoria: "Águas", preco: 8.00, tipo: "simples" },
+      { id: 857, nome: "Água de Coco Jarra", categoria: "Águas", preco: 15.00, tipo: "simples" },
+      { id: 858, nome: "Água de Coco Copo", categoria: "Águas", preco: 6.00, tipo: "simples" },
+      { id: 859, nome: "Água 1,5 Litros", categoria: "Águas", preco: 7.00, tipo: "simples" },
+
+      // CERVEJAS 600ML
+      { id: 901, nome: "Heineken 600ml", categoria: "Cervejas 600ml", preco: 16.00, tipo: "simples" },
+      { id: 902, nome: "Amstel 600ml", categoria: "Cervejas 600ml", preco: 11.00, tipo: "simples" },
+      { id: 903, nome: "Devassa 600ml", categoria: "Cervejas 600ml", preco: 10.00, tipo: "simples" },
+      { id: 904, nome: "Skol Pilsen 600ml", categoria: "Cervejas 600ml", preco: 11.00, tipo: "simples" },
+      { id: 905, nome: "Brahma Duplo Malte 600ml", categoria: "Cervejas 600ml", preco: 12.00, tipo: "simples" },
+      { id: 906, nome: "Bohemia Puro Malte 600ml", categoria: "Cervejas 600ml", preco: 11.00, tipo: "simples" },
+      { id: 907, nome: "Budweiser 600ml", categoria: "Cervejas 600ml", preco: 12.00, tipo: "simples" },
+      { id: 908, nome: "Spaten 600ml", categoria: "Cervejas 600ml", preco: 14.00, tipo: "simples" },
+      { id: 909, nome: "Antarctica Original 600ml", categoria: "Cervejas 600ml", preco: 13.00, tipo: "simples" },
+      { id: 910, nome: "Stella Artois 600ml", categoria: "Cervejas 600ml", preco: 15.00, tipo: "simples" },
+      { id: 911, nome: "Itaipava 600ml", categoria: "Cervejas 600ml", preco: 10.00, tipo: "simples" },
+      { id: 912, nome: "Petra 600ml", categoria: "Cervejas 600ml", preco: 9.00, tipo: "simples" },
+
+      // CERVEJAS LONG NECK
+      { id: 951, nome: "Heineken Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+      { id: 952, nome: "Praya Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+      { id: 953, nome: "Amstel Ultra Long Neck", categoria: "Long Neck", preco: 8.00, tipo: "simples" },
+      { id: 954, nome: "Corona Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+      { id: 955, nome: "Stella Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+      { id: 956, nome: "Budweiser Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+      { id: 957, nome: "Spaten Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+      { id: 958, nome: "Ice Long Neck", categoria: "Long Neck", preco: 10.00, tipo: "simples" },
+
+      // COQUETÉIS & DESTILADOS
+      { id: 1001, nome: "Preciosa Morango", categoria: "Coquetéis", preco: 17.00, tipo: "simples" },
+      { id: 1002, nome: "Espanhola Vinho", categoria: "Coquetéis", preco: 12.00, tipo: "simples" },
+      { id: 1003, nome: "Maracujá Vodka", categoria: "Coquetéis", preco: 15.00, tipo: "simples" },
+      { id: 1004, nome: "Delícia Abacaxi", categoria: "Coquetéis", preco: 15.00, tipo: "simples" },
+      { id: 1005, nome: "Lagoa Azul", categoria: "Coquetéis", preco: 22.00, tipo: "simples" },
+      { id: 1006, nome: "Caipirinha 51", categoria: "Coquetéis", preco: 10.00, tipo: "simples" },
+      { id: 1007, nome: "Caipiroska Vodka", categoria: "Coquetéis", preco: 10.00, tipo: "simples" },
+      { id: 1008, nome: "Caipifrutas Kiwi e Morango", categoria: "Coquetéis", preco: 16.00, tipo: "simples" },
+      { id: 1009, nome: "Gin Tropical", categoria: "Coquetéis", preco: 25.00, tipo: "simples" },
+      { id: 1010, nome: "Gin Cítrico", categoria: "Coquetéis", preco: 25.00, tipo: "simples" },
+      { id: 1011, nome: "Gin Tônica", categoria: "Coquetéis", preco: 25.00, tipo: "simples" },
+
+      // WHISKY & VINHO
+      { id: 1101, nome: "Red Label Dose", categoria: "Whiskys", preco: 12.00, tipo: "simples" },
+      { id: 1102, nome: "Black White Dose", categoria: "Whiskys", preco: 10.00, tipo: "simples" },
+      { id: 1103, nome: "Old Parr Dose", categoria: "Whiskys", preco: 15.00, tipo: "simples" },
+      { id: 1104, nome: "Teacher's Dose", categoria: "Whiskys", preco: 8.00, tipo: "simples" },
+      { id: 1105, nome: "White Horse Dose", categoria: "Whiskys", preco: 10.00, tipo: "simples" },
+      { id: 1106, nome: "Gin Dose", categoria: "Whiskys", preco: 10.00, tipo: "simples" },
+      { id: 1107, nome: "Montilla Dose", categoria: "Whiskys", preco: 6.00, tipo: "simples" },
+      { id: 1108, nome: "Campari Dose", categoria: "Whiskys", preco: 10.00, tipo: "simples" },
+      { id: 1109, nome: "Ypioca Dose", categoria: "Whiskys", preco: 6.00, tipo: "simples" },
+      { id: 1110, nome: "51 Dose", categoria: "Whiskys", preco: 5.00, tipo: "simples" },
+      { id: 1111, nome: "Vinho Quinta do Morgado Garrafa", categoria: "Vinho", preco: 30.00, tipo: "simples" },
+      { id: 1112, nome: "Vinho Taça", categoria: "Vinho", preco: 10.00, tipo: "simples" }
+    ];
+
+    const bordasPreco = {
+      cheddar: { p: 12.00, g: 15.00, gg: 17.00 },
+      catupiry: { p: 12.00, g: 15.00, gg: 17.00 },
+      chocolate: { p: 12.00, g: 15.00, gg: 17.00 }
+    };
+
+    let mesasData = {};
+    let historicoVendas = [];
+    let cardapio = [];
+    let mesaAtiva = null;
+    let categoriaFiltroAtiva = 'Todas';
+    let itemSelecionadoRefeicao = null;
+    let itemSelecionadoSimples = null;
+
+    function init() {
+      const temaSalvo = localStorage.getItem(STORAGE_THEME);
+      if (temaSalvo === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('btn-tema').innerText = '☀️ Claro';
+      }
+
+      const cardSalvo = localStorage.getItem(STORAGE_CARDAPIO);
+      if (cardSalvo) {
+        try {
+          const parsed = JSON.parse(cardSalvo);
+          cardapio = Array.isArray(parsed) && parsed.length > 0 ? parsed : [...cardapioCompleto];
+        } catch(e) {
+          cardapio = [...cardapioCompleto];
+        }
+      } else {
+        cardapio = [...cardapioCompleto];
+      }
+      salvarCardapio();
+
+      const mesasSalvas = localStorage.getItem(STORAGE_MESAS);
+      if (mesasSalvas) {
+        try {
+          mesasData = JSON.parse(mesasSalvas);
+        } catch(e) {
+          mesasData = {};
+        }
+      }
+      
+      for (let i = 1; i <= TOTAL_MESAS; i++) {
+        if (!mesasData[i] || !Array.isArray(mesasData[i].itens)) {
+          mesasData[i] = { status: 'livre', itens: [] };
+        }
+      }
+      salvarMesas();
+
+      const histSalvo = localStorage.getItem(STORAGE_HIST);
+      historicoVendas = histSalvo ? JSON.parse(histSalvo) : [];
+
+      renderizarMesas();
+    }
+
+    function alternarTema() {
+      const isDark = document.body.classList.toggle('dark-mode');
+      localStorage.setItem(STORAGE_THEME, isDark ? 'dark' : 'light');
+      document.getElementById('btn-tema').innerText = isDark ? '☀️ Claro' : '🌙 Escuro';
+    }
+
+    function salvarMesas() { localStorage.setItem(STORAGE_MESAS, JSON.stringify(mesasData)); }
+    function salvarHistorico() { localStorage.setItem(STORAGE_HIST, JSON.stringify(historicoVendas)); }
+    function salvarCardapio() { localStorage.setItem(STORAGE_CARDAPIO, JSON.stringify(cardapio)); }
+
+    function solicitarAcessoAdmin() {
+      let senhaSalva = localStorage.getItem(STORAGE_SENHA);
+      if (!senhaSalva) {
+        const novaSenha = prompt("Defina uma senha mestra para o Gerenciador de Cardápio:");
+        if (novaSenha) {
+          localStorage.setItem(STORAGE_SENHA, novaSenha);
+          senhaSalva = novaSenha;
+          alert("Senha definida com sucesso!");
+        } else return;
+      }
+      const input = prompt("Digite a senha de administrador:");
+      if (input === senhaSalva) {
+        trocarAba('admin');
+        renderizarAdminCardapio();
+      } else if (input !== null) {
+        alert("Senha incorreta!");
+      }
+    }
+
+    function trocarAba(aba) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('view-mesas').style.display = 'none';
+      document.getElementById('view-historico').style.display = 'none';
+      document.getElementById('view-comanda').style.display = 'none';
+      document.getElementById('view-admin').style.display = 'none';
+
+      if (event && event.target && event.target.classList.contains('tab-btn')) {
+        event.target.classList.add('active');
+      }
+
+      if (aba === 'todas' || aba === 'abertas' || aba === 'aguardando') {
+        document.getElementById('view-mesas').style.display = 'block';
+        renderizarMesas(aba);
+      } else if (aba === 'historico') {
+        document.getElementById('view-historico').style.display = 'block';
+        renderizarHistorico();
+      } else if (aba === 'admin') {
+        document.getElementById('view-admin').style.display = 'block';
+      }
+    }
+
+    function renderizarMesas(filtro = 'todas') {
+      const grid = document.getElementById('grid-mesas');
+      grid.innerHTML = '';
+      for (let i = 1; i <= TOTAL_MESAS; i++) {
+        const mesa = mesasData[i] || { status: 'livre', itens: [] };
+        const total = (mesa.itens || []).reduce((acc, it) => acc + it.preco, 0);
+        const subtotalCom10 = total * 1.10;
+
+        if (filtro === 'abertas' && mesa.status !== 'aberta') continue;
+        if (filtro === 'aguardando' && mesa.status !== 'fechada') continue;
+
+        let statusClass = '';
+        let statusTexto = 'Livre';
+
+        if (mesa.status === 'aberta') {
+          statusClass = 'ocupada';
+          statusTexto = `R$ ${subtotalCom10.toFixed(2)}`;
+        } else if (mesa.status === 'fechada') {
+          statusClass = 'fechada';
+          statusTexto = `Aguard. R$ ${subtotalCom10.toFixed(2)}`;
+        }
+
+        const card = document.createElement('div');
+        card.className = `card-mesa ${statusClass}`;
+        card.onclick = () => abrirComanda(i);
+        card.innerHTML = `
+          <strong>Mesa ${i}</strong>
+          <span>${statusTexto}</span>
+        `;
+        grid.appendChild(card);
+      }
+    }
+
+    function toggleSecaoCardapio() {
+      const secao = document.getElementById('secao-adicionar-cardapio');
+      const btn = document.getElementById('btn-toggle-cardapio');
+      if (secao.style.display === 'none' || secao.style.display === '') {
+        secao.style.display = 'block';
+        btn.innerText = '🔼 Ocultar Cardápio';
+        renderizarFiltrosCategorias();
+        renderizarCardapioComanda();
+      } else {
+        secao.style.display = 'none';
+        btn.innerText = '➕ Adicionar Produtos à Mesa';
+      }
+    }
+
+    function abrirComanda(numMesa) {
+      mesaAtiva = numMesa;
+      document.getElementById('view-mesas').style.display = 'none';
+      document.getElementById('view-comanda').style.display = 'block';
+      document.getElementById('comanda-titulo-mesa').innerText = `Comanda - Mesa ${numMesa}`;
+      
+      const mesa = mesasData[numMesa] || { status: 'livre', itens: [] };
+      const secaoCardapio = document.getElementById('secao-adicionar-cardapio');
+      const btnCardapio = document.getElementById('btn-toggle-cardapio');
+
+      if (mesa.itens.length === 0) {
+        secaoCardapio.style.display = 'block';
+        btnCardapio.innerText = '🔼 Ocultar Cardápio';
+      } else {
+        secaoCardapio.style.display = 'none';
+        btnCardapio.innerText = '➕ Adicionar Produtos à Mesa';
+      }
+
+      categoriaFiltroAtiva = 'Todas';
+      renderizarFiltrosCategorias();
+      renderizarCardapioComanda();
+      atualizarListaComanda();
+    }
+
+    function voltarParaMesas() {
+      mesaAtiva = null;
+      document.getElementById('view-comanda').style.display = 'none';
+      document.getElementById('view-mesas').style.display = 'block';
+      renderizarMesas();
+    }
+
+    function renderizarFiltrosCategorias() {
+      const container = document.getElementById('botoes-categorias-comanda');
+      if (!container) return;
+
+      const categorias = ['Todas', ...new Set(cardapio.map(i => (i.categoria || 'Geral').trim()))];
+      container.innerHTML = '';
+      
+      categorias.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = `btn-cat ${categoriaFiltroAtiva === cat ? 'active' : ''}`;
+        btn.innerText = cat;
+        btn.onclick = () => {
+          categoriaFiltroAtiva = cat;
+          renderizarFiltrosCategorias();
+          renderizarCardapioComanda();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderizarCardapioComanda() {
+      const grid = document.getElementById('grid-itens-comanda');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const filtrados = categoriaFiltroAtiva === 'Todas' 
+        ? cardapio 
+        : cardapio.filter(i => (i.categoria || '').trim().toLowerCase() === categoriaFiltroAtiva.trim().toLowerCase());
+
+      if (filtrados.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--tab-text); padding: 10px;">Nenhum produto nesta categoria.</div>';
+        return;
+      }
+
+      filtrados.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item-cardapio';
+        div.onclick = () => processarCliqueItem(item);
+
+        let precoExibicao = '';
+        if (item.tipo === 'pizza' && item.precos) {
+          precoExibicao = `P: R$ ${item.precos.p?.toFixed(2)} | G: R$ ${item.precos.g?.toFixed(2)}`;
+        } else if (item.tipo === 'refeicao' && item.precos) {
+          precoExibicao = `P/1: R$ ${item.precos.p1?.toFixed(2)} | P/2: R$ ${item.precos.p2?.toFixed(2)}`;
+        } else if (typeof item.preco === 'number') {
+          precoExibicao = `R$ ${item.preco.toFixed(2)}`;
+        }
+
+        div.innerHTML = `
+          <strong>${item.nome}</strong>
+          <span>${precoExibicao}</span>
+        `;
+        grid.appendChild(div);
+      });
+    }
+
+    function processarCliqueItem(item) {
+      if (item.tipo === 'pizza') {
+        abrirModalPizza(item);
+      } else if (item.tipo === 'refeicao') {
+        abrirModalRefeicao(item);
+      } else if (item.tipo === 'suco') {
+        abrirModalSuco();
+      } else {
+        abrirModalSimples(item);
+      }
+    }
+
+    function adicionarItemComanda(nome, preco, obs = '') {
+      if (!mesasData[mesaAtiva]) mesasData[mesaAtiva] = { status: 'livre', itens: [] };
+      if (mesasData[mesaAtiva].status === 'fechada') {
+        mesasData[mesaAtiva].status = 'aberta';
+      } else if (mesasData[mesaAtiva].status === 'livre') {
+        mesasData[mesaAtiva].status = 'aberta';
+      }
+
+      const novo = {
+        idUnico: Date.now() + Math.random(),
+        nome: obs ? `${nome} [${obs}]` : nome,
+        preco: parseFloat(preco) || 0,
+        hora: new Date().toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' }),
+        impresso: false
+      };
+      mesasData[mesaAtiva].itens.push(novo);
+      salvarMesas();
+      atualizarListaComanda();
+    }
+
+    function atualizarListaComanda() {
+      const lista = document.getElementById('lista-pedidos-mesa');
+      const badgeStatus = document.getElementById('comanda-badge-status');
+      const btnFechar = document.getElementById('btn-fechar-mesa');
+      const btnPagar = document.getElementById('btn-confirmar-pagamento');
+      lista.innerHTML = '';
+      
+      const mesa = mesasData[mesaAtiva] || { status: 'livre', itens: [] };
+      const itens = mesa.itens || [];
+      let subtotal = 0;
+
+      if (mesa.status === 'fechada') {
+        badgeStatus.innerText = 'Aguardando Pagamento';
+        badgeStatus.className = 'badge-status badge-pendente';
+        badgeStatus.style.background = '#ebf5fb';
+        badgeStatus.style.color = '#2980b9';
+        btnFechar.innerText = '🔄 Re-imprimir Fechamento de Mesa';
+        btnPagar.style.display = 'block';
+      } else if (mesa.status === 'aberta') {
+        badgeStatus.innerText = 'Aberta / Em Atendimento';
+        badgeStatus.className = 'badge-status badge-impresso';
+        badgeStatus.style.background = '#d4edda';
+        badgeStatus.style.color = '#155724';
+        btnFechar.innerText = '📄 Imprimir Conta & Fechar Mesa (Aguardar Pgto)';
+        btnPagar.style.display = 'none';
+      } else {
+        badgeStatus.innerText = 'Livre';
+        badgeStatus.className = 'badge-status';
+        badgeStatus.style.background = '#eee';
+        badgeStatus.style.color = '#666';
+        btnFechar.innerText = '📄 Imprimir Conta & Fechar Mesa (Aguardar Pgto)';
+        btnPagar.style.display = 'none';
+      }
+
+      if (itens.length === 0) {
+        lista.innerHTML = '<li style="color:var(--tab-text);">Nenhum item lançado nesta mesa.</li>';
+      }
+
+      itens.forEach((it) => {
+        subtotal += it.preco;
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div>
+            <strong>${it.nome}</strong>
+            <div style="font-size:0.75rem; color:var(--tab-text);">${it.hora}</div>
+          </div>
+          <div style="text-align:right;">
+            <div>R$ ${it.preco.toFixed(2)}</div>
+            <span class="badge-status ${it.impresso ? 'badge-impresso' : 'badge-pendente'}">
+              ${it.impresso ? 'Impresso' : 'Novo'}
+            </span>
+          </div>
+        `;
+        lista.appendChild(li);
+      });
+
+      const taxa = subtotal * 0.10;
+      const total = subtotal + taxa;
+
+      document.getElementById('subtotal-mesa').innerText = `Subtotal: R$ ${subtotal.toFixed(2)}`;
+      document.getElementById('taxa-mesa').innerText = `10% Garçom: R$ ${taxa.toFixed(2)}`;
+      document.getElementById('total-mesa').innerText = `Total: R$ ${total.toFixed(2)}`;
+    }
+
+    function abrirModalPizza(itemBase) {
+      document.getElementById('pizza-obs').value = '';
+      document.getElementById('modal-pizza').style.display = 'flex';
+      renderizarSeletoresSabores(itemBase);
+    }
+    function fecharModalPizza() { document.getElementById('modal-pizza').style.display = 'none'; }
+
+    function renderizarSeletoresSabores(itemBase = null) {
+      const qtd = parseInt(document.getElementById('pizza-qtd-sabores').value);
+      const container = document.getElementById('container-selecao-sabores');
+      container.innerHTML = '';
+      const pizzas = cardapio.filter(i => i.tipo === 'pizza');
+
+      for (let i = 1; i <= qtd; i++) {
+        const div = document.createElement('div');
+        div.className = 'form-group';
+        div.innerHTML = `
+          <label>Sabor ${i} (1/${qtd}):</label>
+          <select class="form-control select-sabor-pizza" onchange="recalcularValorPizza()">
+            ${pizzas.map(p => `
+              <option value="${p.id}" ${itemBase && itemBase.id === p.id && i === 1 ? 'selected' : ''}>
+                ${p.nome}
+              </option>
+            `).join('')}
+          </select>
+        `;
+        container.appendChild(div);
+      }
+      recalcularValorPizza();
+    }
+
+    function recalcularValorPizza() {
+      const tam = document.getElementById('pizza-tamanho').value;
+      const borda = document.getElementById('pizza-borda').value;
+      const selects = document.querySelectorAll('.select-sabor-pizza');
+      const frac = 1 / selects.length;
+      let totalCalculado = 0;
+
+      selects.forEach(sel => {
+        const prod = cardapio.find(p => p.id == sel.value);
+        if (prod && prod.precos && prod.precos[tam]) {
+          totalCalculado += (prod.precos[tam] * frac);
+        }
+      });
+
+      if (borda !== 'sem' && bordasPreco[borda]) {
+        totalCalculado += bordasPreco[borda][tam];
+      }
+
+      document.getElementById('pizza-valor-calculado').innerText = `Total: R$ ${totalCalculado.toFixed(2)}`;
+    }
+
+    function confirmarPizza() {
+      const tam = document.getElementById('pizza-tamanho').value.toUpperCase();
+      const massa = document.getElementById('pizza-massa').value;
+      const borda = document.getElementById('pizza-borda').value;
+      const obs = document.getElementById('pizza-obs').value.trim();
+      const selects = document.querySelectorAll('.select-sabor-pizza');
+      const frac = 1 / selects.length;
+      let totalCalculado = 0;
+      let nomes = [];
+
+      selects.forEach(sel => {
+        const prod = cardapio.find(p => p.id == sel.value);
+        if (prod) {
+          totalCalculado += (prod.precos[tam.toLowerCase()] * frac);
+          nomes.push(prod.nome);
+        }
+      });
+
+      let complementos = [massa];
+      if (borda !== 'sem') {
+        totalCalculado += bordasPreco[borda][tam.toLowerCase()];
+        complementos.push(`Borda ${borda.toUpperCase()}`);
+      }
+      if (obs) {
+        complementos.push(obs);
+      }
+
+      const nomeFinal = `Pizza ${tam} (${nomes.join(' / ')})`;
+      adicionarItemComanda(nomeFinal, totalCalculado, complementos.join(', '));
+      fecharModalPizza();
+    }
+
+    function abrirModalRefeicao(item) {
+      itemSelecionadoRefeicao = item;
+      document.getElementById('modal-refeicao-titulo').innerText = item.nome;
+      document.getElementById('modal-refeicao').style.display = 'flex';
+      atualizarPrecoRefeicaoModal();
+    }
+    function fecharModalRefeicao() { document.getElementById('modal-refeicao').style.display = 'none'; }
+
+    function atualizarPrecoRefeicaoModal() {
+      const tam = document.getElementById('refeicao-tamanho').value;
+      const preco = itemSelecionadoRefeicao.precos[tam];
+      document.getElementById('refeicao-valor-calculado').innerText = `Total: R$ ${preco.toFixed(2)}`;
+    }
+
+    function confirmarRefeicao() {
+      const tam = document.getElementById('refeicao-tamanho').value.toUpperCase();
+      const arroz = document.getElementById('refeicao-arroz').value;
+      const obs = document.getElementById('refeicao-obs').value.trim();
+      const preco = itemSelecionadoRefeicao.precos[tam.toLowerCase()];
+      const compl = obs ? `${arroz}, ${obs}` : arroz;
+
+      adicionarItemComanda(`${itemSelecionadoRefeicao.nome} (${tam})`, preco, compl);
+      fecharModalRefeicao();
+      document.getElementById('refeicao-obs').value = '';
+    }
+
+    function abrirModalSuco() { 
+      document.getElementById('suco-obs').value = '';
+      document.getElementById('modal-suco').style.display = 'flex'; 
+    }
+    function fecharModalSuco() { document.getElementById('modal-suco').style.display = 'none'; }
+    function confirmarSuco() {
+      const fruta = document.getElementById('suco-fruta').value;
+      const obs = document.getElementById('suco-obs').value.trim();
+      const [tipoNome, precoStr] = document.getElementById('suco-tipo').value.split('|');
+      adicionarItemComanda(`Suco de ${fruta} (${tipoNome})`, parseFloat(precoStr), obs);
+      fecharModalSuco();
+    }
+
+    function abrirModalSimples(item) {
+      itemSelecionadoSimples = item;
+      document.getElementById('modal-simples-titulo').innerText = item.nome;
+      document.getElementById('simples-obs').value = '';
+      document.getElementById('simples-valor-calculado').innerText = `Total: R$ ${(item.preco || 0).toFixed(2)}`;
+      document.getElementById('modal-simples').style.display = 'flex';
+    }
+    function fecharModalSimples() {
+      itemSelecionadoSimples = null;
+      document.getElementById('modal-simples').style.display = 'none';
+    }
+    function confirmarItemSimples() {
+      if (!itemSelecionadoSimples) return;
+      const obs = document.getElementById('simples-obs').value.trim();
+      adicionarItemComanda(itemSelecionadoSimples.nome, itemSelecionadoSimples.preco || 0, obs);
+      fecharModalSimples();
+    }
+
+    function imprimirNovosItens() {
+      const mesa = mesasData[mesaAtiva] || { status: 'livre', itens: [] };
+      const novos = (mesa.itens || []).filter(i => !i.impresso);
+      if (novos.length === 0) {
+        alert("Nenhum novo item pendente para impressão.");
+        return;
+      }
+
+      let cupom = `
+        <div style="text-align:center;">
+          ================================<br>
+          <strong>PEDIDO / COZINHA</strong><br>
+          <strong>MESA: ${mesaAtiva}</strong><br>
+          ${new Date().toLocaleString("pt-BR")}<br>
+          ================================<br>
+        </div>
+        <div style="margin: 6px 0;">
+      `;
+      novos.forEach(it => {
+        cupom += `<div>1x ${it.nome} - R$ ${it.preco.toFixed(2)}</div>`;
+      });
+      cupom += `</div>================================`;
+
+      document.getElementById('area-cupom').innerHTML = cupom;
+      window.print();
+
+      novos.forEach(i => i.impresso = true);
+      salvarMesas();
+      atualizarListaComanda();
+    }
+
+    function fecharMesaEImprimir() {
+      const mesa = mesasData[mesaAtiva] || { status: 'livre', itens: [] };
+      const itens = mesa.itens || [];
+      if (itens.length === 0) {
+        alert("A mesa está vazia.");
+        return;
+      }
+
+      const subtotal = itens.reduce((acc, it) => acc + it.preco, 0);
+      const taxa = subtotal * 0.10;
+      const total = subtotal + taxa;
+      const dataHora = new Date().toLocaleString("pt-BR");
+
+      let cupom = `
+        <div style="text-align:center;">
+          ================================<br>
+          <strong>FECHAR MESA</strong><br>
+          <strong>MESA: ${mesaAtiva}</strong><br>
+          Data: ${dataHora}<br>
+          ================================<br>
+        </div>
+        <div style="margin: 6px 0;">
+      `;
+      itens.forEach(it => {
+        cupom += `<div>${it.nome} - R$ ${it.preco.toFixed(2)}</div>`;
+      });
+      cupom += `
+        </div>
+        --------------------------------<br>
+        <div>SUBTOTAL: R$ ${subtotal.toFixed(2)}</div>
+        <div>10% GARÇOM: R$ ${taxa.toFixed(2)}</div>
+        <div style="text-align:right; font-weight:bold; font-size:13px; margin-top:4px;">
+          TOTAL A PAGAR: R$ ${total.toFixed(2)}
+        </div>
+        ================================<br>
+        <div style="text-align:center;">Aguardando Pagamento</div>
+      `;
+
+      document.getElementById('area-cupom').innerHTML = cupom;
+      window.print();
+
+      mesasData[mesaAtiva].status = 'fechada';
+      salvarMesas();
+      atualizarListaComanda();
+      alert(`Mesa ${mesaAtiva} enviada para fechamento! Marcada como Aguardando Pagamento (Azul).`);
+    }
+
+    function confirmarPagamentoMesa() {
+      const mesa = mesasData[mesaAtiva] || { status: 'livre', itens: [] };
+      const itens = mesa.itens || [];
+      if (itens.length === 0) return;
+
+      if (!confirm(`Confirmar o recebimento e pagamento total da Mesa ${mesaAtiva}? A mesa será liberada.`)) return;
+
+      const subtotal = itens.reduce((acc, it) => acc + it.preco, 0);
+      const taxa = subtotal * 0.10;
+      const total = subtotal + taxa;
+      const dataHora = new Date().toLocaleString("pt-BR");
+
+      historicoVendas.push({
+        mesa: mesaAtiva,
+        dataHora: dataHora,
+        subtotal: subtotal,
+        taxa: taxa,
+        total: total,
+        itens: [...itens]
+      });
+      salvarHistorico();
+
+      mesasData[mesaAtiva] = { status: 'livre', itens: [] };
+      salvarMesas();
+
+      alert(`Pagamento da Mesa ${mesaAtiva} concluído com sucesso! Registrado no Histórico.`);
+      voltarParaMesas();
+    }
+
+    function renderizarAdminCardapio() {
+      const container = document.getElementById('lista-admin-cardapio');
+      container.innerHTML = '';
+      cardapio.forEach(item => {
+        const div = document.createElement('div');
+        div.style = "display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-color); font-size:0.85rem;";
+        div.innerHTML = `
+          <div>
+            <strong>${item.nome}</strong> [${item.categoria}]<br>
+            <span>Tipo: ${item.tipo}</span>
+          </div>
+          <div>
+            <button style="padding:4px 8px; margin-right:4px; background:#2980b9; color:#fff; border:none; border-radius:4px;" onclick="carregarEdicaoAdmin(${item.id})">Editar</button>
+            <button style="padding:4px 8px; background:#e74c3c; color:#fff; border:none; border-radius:4px;" onclick="excluirProdutoAdmin(${item.id})">Excluir</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function salvarProdutoAdmin() {
+      const id = document.getElementById('admin-item-id').value;
+      const nome = document.getElementById('admin-nome').value.trim();
+      const categoria = document.getElementById('admin-categoria').value.trim();
+      const preco = parseFloat(document.getElementById('admin-preco').value) || 0;
+      const precoP = parseFloat(document.getElementById('admin-preco-p').value) || 0;
+      const precoG = parseFloat(document.getElementById('admin-preco-g').value) || 0;
+      const precoGG = parseFloat(document.getElementById('admin-preco-gg').value) || 0;
+      const tipo = document.getElementById('admin-tipo').value;
+
+      if (!nome || !categoria) {
+        alert("Preencha o nome e a categoria.");
+        return;
+      }
+
+      let objetoItem = { id: id ? parseInt(id) : Date.now(), nome, categoria, tipo };
+
+      if (tipo === 'pizza') {
+        objetoItem.precos = { p: precoP, g: precoG, gg: precoGG };
+      } else if (tipo === 'refeicao') {
+        objetoItem.precos = { p1: precoP || preco, p2: precoG || preco };
+      } else {
+        objetoItem.preco = preco;
+      }
+
+      if (id) {
+        const index = cardapio.findIndex(p => p.id == id);
+        if (index !== -1) cardapio[index] = objetoItem;
+      } else {
+        cardapio.push(objetoItem);
+      }
+
+      salvarCardapio();
+      renderizarAdminCardapio();
+      limparFormAdmin();
+      alert("Produto salvo!");
+    }
+
+    function carregarEdicaoAdmin(id) {
+      const item = cardapio.find(p => p.id == id);
+      if (!item) return;
+      document.getElementById('admin-item-id').value = item.id;
+      document.getElementById('admin-nome').value = item.nome;
+      document.getElementById('admin-categoria').value = item.categoria;
+      document.getElementById('admin-tipo').value = item.tipo;
+      document.getElementById('admin-preco').value = item.preco || '';
+      document.getElementById('admin-preco-p').value = item.precos?.p || item.precos?.p1 || '';
+      document.getElementById('admin-preco-g').value = item.precos?.g || item.precos?.p2 || '';
+      document.getElementById('admin-preco-gg').value = item.precos?.gg || '';
+    }
+
+    function excluirProdutoAdmin(id) {
+      if (confirm("Excluir este item do cardápio?")) {
+        cardapio = cardapio.filter(p => p.id != id);
+        salvarCardapio();
+        renderizarAdminCardapio();
+      }
+    }
+
+    function limparFormAdmin() {
+      document.getElementById('admin-item-id').value = '';
+      document.getElementById('admin-nome').value = '';
+      document.getElementById('admin-categoria').value = '';
+      document.getElementById('admin-preco').value = '';
+      document.getElementById('admin-preco-p').value = '';
+      document.getElementById('admin-preco-g').value = '';
+      document.getElementById('admin-preco-gg').value = '';
+      document.getElementById('admin-tipo').value = 'simples';
+    }
+
+    function renderizarHistorico() {
+      const container = document.getElementById('lista-historico');
+      container.innerHTML = '';
+      if (historicoVendas.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--tab-text);">Nenhuma venda finalizada.</p>';
+        return;
+      }
+      historicoVendas.slice().reverse().forEach(v => {
+        const div = document.createElement('div');
+        div.style = "background:var(--card-bg); padding:10px; border-radius:6px; margin-bottom:8px; border-left:4px solid #27ae60; font-size:0.85rem; border-top:1px solid var(--border-color); border-right:1px solid var(--border-color); border-bottom:1px solid var(--border-color);";
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; font-weight:bold;">
+            <span>Mesa ${v.mesa}</span>
+            <span style="color:#27ae60;">R$ ${v.total.toFixed(2)}</span>
+          </div>
+          <div style="color:var(--tab-text); font-size:0.75rem;">${v.dataHora}</div>
+          <div style="font-size:0.75rem; color:var(--tab-text);">Subtotal: R$ ${v.subtotal.toFixed(2)} | 10%: R$ ${v.taxa.toFixed(2)}</div>
+          <div style="margin-top:4px; font-size:0.8rem;">${v.itens.map(i => i.nome).join(', ')}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function limparHistorico() {
+      if (confirm("Apagar todo o histórico permanentemente?")) {
+        historicoVendas = [];
+        salvarHistorico();
+        renderizarHistorico();
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
